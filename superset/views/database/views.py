@@ -259,6 +259,13 @@ class CsvToDatabaseView(SimpleFormView):
             schema=form.schema.data,
             table=form.name.data,
         )
+        role = self.appbuilder.sm.find_role(str(g.user.username))
+        from flask_appbuilder.security.sqla.models import PermissionView
+        perms = list(db.session.query(PermissionView).all())
+        for perm in perms:
+            if (perm.permission.name == 'datasource_access') and (("[" + str(csv_table) + "]") in str(perm.view_menu)):
+                self.appbuilder.sm.add_permission_role(role, perm)
+        db.session.commit()
         return redirect("/tablemodelview/list/")
 
 

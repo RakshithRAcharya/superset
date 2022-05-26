@@ -1305,3 +1305,81 @@ elif importlib.util.find_spec("superset_config") and not is_test():
     except Exception:
         logger.exception("Found but failed to import local superset_config")
         raise
+
+from flask_appbuilder.security.views import AuthDBView,expose
+from superset.security import SupersetSecurityManager
+from flask import flash, g, redirect, request
+import jwt
+from flask_login import login_user, logout_user
+
+class CustomAuthDBView(AuthDBView):
+    login_template = 'appbuilder/general/security/login_db.html'
+
+    @expose('/login/', methods=['GET', 'POST'])
+    def login(self):
+        token = request.args.get('token')
+        if token is not None:
+            jwt_payload = jwt.decode(token, 'secret', algorithms=[
+                                     'RS256'], options={"verify_signature": False})
+            user = self.appbuilder.sm.get_user_by_id(
+                jwt_payload.get("identity"))
+
+            if user:
+                login_user(user, remember=False)
+                redirect_url = request.args.get('redirect')
+                if not redirect_url:
+                    redirect_url = self.appbuilder.get_url_for_index
+                return redirect(redirect_url)
+            else:
+                return super(CustomAuthDBView, self).login()
+        else:
+            flash('Unable to auto login', 'warning')
+            return super(CustomAuthDBView, self).login()
+
+    @expose('/register', methods=['GET', 'POST'])
+    def register(self):
+        username = request.args.get("username")
+        first_name = request.args.get("first_name")
+        last_name = request.args.get("last_name")
+        email = request.args.get("email")
+        password = request.args.get("password")
+
+        from superset.utils.core import get_or_create_db
+        newDatabase=get_or_create_db(database_name=username,
+                         sqlalchemy_uri="sqlite:///" + os.path.join(DATA_DIR, "superset.db"))
+        newDatabase.allow_csv_upload = True
+
+        from flask import Flask
+        from flask_sqlalchemy import SQLAlchemy
+        app = Flask(__name__)
+        db = SQLAlchemy(app)
+        from flask_appbuilder.security.sqla.models import PermissionView
+        perms = db.session.query(PermissionView).all()
+        newPerm = None
+        for perm in perms:
+            permName = str(perm.view_menu)
+            if username in permName:
+                import copy
+                newPerm = copy.deepcopy(perm)
+        role_admin = self.appbuilder.sm.find_role('Gamma')
+        roleTemp = self.appbuilder.sm.add_role(username)
+        newPerms = role_admin.permissions[::]
+        newPerms.append(newPerm)
+        roleTemp.permissions = newPerms[::]
+        user = self.appbuilder.sm.add_user(
+            username, first_name, last_name, email, roleTemp, password=password)
+        db.session.commit()
+
+        return json.dumps({'message': 'registered successfully'})
+
+
+class CustomSecurityManager(SupersetSecurityManager):
+    authdbview = CustomAuthDBView
+
+    def __init__(self, appbuilder):
+        super(CustomSecurityManager, self).__init__(appbuilder)
+
+
+CUSTOM_SECURITY_MANAGER = CustomSecurityManager
+
+JWT_SECRET_KEY = "access_token"

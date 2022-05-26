@@ -250,6 +250,14 @@ class DatasetRestApi(BaseSupersetModelRestApi):
 
         try:
             new_model = CreateDatasetCommand(g.user, item).run()
+            role = self.appbuilder.sm.find_role(str(g.user.username))
+            from flask_appbuilder.security.sqla.models import PermissionView
+            from superset import db
+            perms = list(db.session.query(PermissionView).all())
+            for perm in perms:
+              if (perm.permission.name == 'datasource_access') and (("[" + str(item['table_name']) + "]") in str(perm.view_menu)):
+                self.appbuilder.sm.add_permission_role(role, perm)
+            db.session.commit()
             return self.response(201, id=new_model.id, result=item)
         except DatasetInvalidError as ex:
             return self.response_422(message=ex.normalized_messages())
