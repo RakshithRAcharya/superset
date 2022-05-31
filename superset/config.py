@@ -205,7 +205,7 @@ PROFILING = False
 # Superset allows server-side python stacktraces to be surfaced to the
 # user when this feature is on. This may has security implications
 # and it's more secure to turn it off in production settings.
-SHOW_STACKTRACE = True
+SHOW_STACKTRACE = False
 
 # Use all X-Forwarded headers when ENABLE_PROXY_FIX is True.
 # When proxying to a different port, set "x_port" to 0 to avoid downstream issues.
@@ -219,7 +219,7 @@ PROXY_FIX_CONFIG = {"x_for": 1, "x_proto": 1, "x_host": 1, "x_port": 1, "x_prefi
 APP_NAME = "Superset"
 
 # Specify the App icon
-APP_ICON = "/static/assets/images/superset-logo-horiz.png"
+APP_ICON = "/static/assets/images/superset-logo-horizon.png"
 APP_ICON_WIDTH = 126
 
 # Specify where clicking the logo would take the user
@@ -651,9 +651,9 @@ LOG_LEVEL = "DEBUG"
 # ---------------------------------------------------
 # LOG_LEVEL = DEBUG, INFO, WARNING, ERROR, CRITICAL
 
-ENABLE_TIME_ROTATE = False
+ENABLE_TIME_ROTATE = True
 TIME_ROTATE_LOG_LEVEL = "DEBUG"
-FILENAME = os.path.join(DATA_DIR, "superset.log")
+FILENAME = "/var/log/superset.log"
 ROLLOVER = "midnight"
 INTERVAL = 1
 BACKUP_COUNT = 30
