@@ -54,7 +54,7 @@ with open(VERSION_INFO_FILE, "w") as version_file:
 
 
 setup(
-    name="apache-superset",
+    name="apache-onenine-superset",
     description=("A modern, enterprise-ready business intelligence web application"),
     long_description=long_description,
     long_description_content_type="text/markdown",
