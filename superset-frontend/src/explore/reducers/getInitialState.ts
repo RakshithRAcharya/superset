@@ -18,10 +18,7 @@
  */
 import shortid from 'shortid';
 import { DatasourceType, JsonObject, QueryFormData } from '@superset-ui/core';
-import {
-  ControlStateMapping,
-  DatasourceMeta,
-} from '@superset-ui/chart-controls';
+import { ControlStateMapping, Dataset } from '@superset-ui/chart-controls';
 import {
   CommonBootstrapData,
   UserWithPermissionsAndRoles,
@@ -36,23 +33,24 @@ import {
   applyMapStateToPropsToControl,
 } from 'src/explore/controlUtils';
 
-export interface ExlorePageBootstrapData extends JsonObject {
+export interface ExplorePageBootstrapData extends JsonObject {
   can_add: boolean;
   can_download: boolean;
   can_overwrite: boolean;
   common: CommonBootstrapData;
-  datasource: DatasourceMeta;
+  datasource: Dataset;
   datasource_id: number;
   datasource_type: DatasourceType;
   forced_height: string | null;
   form_data: QueryFormData;
   slice: Slice | null;
   standalone: boolean;
+  force: boolean;
   user: UserWithPermissionsAndRoles;
 }
 
 export default function getInitialState(
-  bootstrapData: ExlorePageBootstrapData,
+  bootstrapData: ExplorePageBootstrapData,
 ) {
   const { form_data: initialFormData } = bootstrapData;
   const { slice } = bootstrapData;
@@ -75,6 +73,7 @@ export default function getInitialState(
       bootstrapData,
       initialFormData,
     ) as ControlStateMapping,
+    controlsTransferred: [],
   };
 
   // apply initial mapStateToProps for all controls, must execute AFTER

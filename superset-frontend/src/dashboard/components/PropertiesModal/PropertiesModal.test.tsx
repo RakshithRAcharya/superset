@@ -87,7 +87,7 @@ fetchMock.get(
   },
 );
 
-fetchMock.get('http://localhost/api/v1/dashboard/26', {
+fetchMock.get('glob:*/api/v1/dashboard/26', {
   body: {
     result: {
       certified_by: 'John Doe',
@@ -132,6 +132,7 @@ const createProps = () => ({
   onlyApply: false,
   onHide: jest.fn(),
   onSubmit: jest.fn(),
+  addSuccessToast: jest.fn(),
 });
 
 beforeEach(() => {

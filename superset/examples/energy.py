@@ -21,10 +21,11 @@ import pandas as pd
 from sqlalchemy import Float, inspect, String
 from sqlalchemy.sql import column
 
+import superset.utils.database as database_utils
 from superset import db
 from superset.connectors.sqla.models import SqlMetric
 from superset.models.slice import Slice
-from superset.utils import core as utils
+from superset.utils.core import DatasourceType
 
 from .helpers import (
     get_example_data,
@@ -39,7 +40,7 @@ def load_energy(
 ) -> None:
     """Loads an energy related dataset to use with sankey and graphs"""
     tbl_name = "energy_usage"
-    database = utils.get_example_database()
+    database = database_utils.get_example_database()
     engine = database.get_sqla_engine()
     schema = inspect(engine).default_schema_name
     table_exists = database.has_table_by_name(tbl_name)
@@ -81,7 +82,7 @@ def load_energy(
     slc = Slice(
         slice_name="Energy Sankey",
         viz_type="sankey",
-        datasource_type="table",
+        datasource_type=DatasourceType.TABLE,
         datasource_id=tbl.id,
         params=textwrap.dedent(
             """\
@@ -105,7 +106,7 @@ def load_energy(
     slc = Slice(
         slice_name="Energy Force Layout",
         viz_type="graph_chart",
-        datasource_type="table",
+        datasource_type=DatasourceType.TABLE,
         datasource_id=tbl.id,
         params=textwrap.dedent(
             """\
@@ -129,7 +130,7 @@ def load_energy(
     slc = Slice(
         slice_name="Heatmap",
         viz_type="heatmap",
-        datasource_type="table",
+        datasource_type=DatasourceType.TABLE,
         datasource_id=tbl.id,
         params=textwrap.dedent(
             """\

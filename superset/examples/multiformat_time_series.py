@@ -21,8 +21,9 @@ from sqlalchemy import BigInteger, Date, DateTime, inspect, String
 
 from superset import app, db
 from superset.models.slice import Slice
-from superset.utils.core import get_example_database
+from superset.utils.core import DatasourceType
 
+from ..utils.database import get_example_database
 from .helpers import (
     get_example_data,
     get_slice_json,
@@ -120,7 +121,7 @@ def load_multiformat_time_series(  # pylint: disable=too-many-locals
         slc = Slice(
             slice_name=f"Calendar Heatmap multiformat {i}",
             viz_type="cal_heatmap",
-            datasource_type="table",
+            datasource_type=DatasourceType.TABLE,
             datasource_id=tbl.id,
             params=get_slice_json(slice_data),
         )

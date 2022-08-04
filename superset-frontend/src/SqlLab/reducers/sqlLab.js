@@ -20,7 +20,7 @@ import { t } from '@superset-ui/core';
 
 import getInitialState from './getInitialState';
 import * as actions from '../actions/sqlLab';
-import { now } from '../../modules/dates';
+import { now } from '../../utils/dates';
 import {
   addToObject,
   alterInObject,
@@ -134,7 +134,7 @@ export default function sqlLabReducer(state = {}, action) {
       }
       // for new table, associate Id of query for data preview
       at.dataPreviewQueryId = null;
-      let newState = addToArr(state, 'tables', at);
+      let newState = addToArr(state, 'tables', at, Boolean(action.prepend));
       if (action.query) {
         newState = alterInArr(newState, 'tables', at, {
           dataPreviewQueryId: action.query.id,
@@ -332,7 +332,7 @@ export default function sqlLabReducer(state = {}, action) {
         endDttm: now(),
         progress: 100,
         results: action.results,
-        rows: action?.results?.data?.length,
+        rows: action?.results?.query?.rows || 0,
         state: 'success',
         limitingFactor: action?.results?.query?.limitingFactor,
         tempSchema: action?.results?.query?.tempSchema,
@@ -340,6 +340,12 @@ export default function sqlLabReducer(state = {}, action) {
         errorMessage: null,
         cached: false,
       };
+
+      const resultsKey = action?.results?.query?.resultsKey;
+      if (resultsKey) {
+        alts.resultsKey = resultsKey;
+      }
+
       return alterInObject(state, 'queries', action.query, alts);
     },
     [actions.QUERY_FAILED]() {
@@ -358,7 +364,7 @@ export default function sqlLabReducer(state = {}, action) {
     [actions.SET_ACTIVE_QUERY_EDITOR]() {
       const qeIds = state.queryEditors.map(qe => qe.id);
       if (
-        qeIds.indexOf(action.queryEditor.id) > -1 &&
+        qeIds.indexOf(action.queryEditor?.id) > -1 &&
         state.tabHistory[state.tabHistory.length - 1] !== action.queryEditor.id
       ) {
         const tabHistory = state.tabHistory.slice();

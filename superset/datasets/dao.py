@@ -26,6 +26,7 @@ from superset.extensions import db
 from superset.models.core import Database
 from superset.models.dashboard import Dashboard
 from superset.models.slice import Slice
+from superset.utils.core import DatasourceType
 from superset.views.base import DatasourceFilter
 
 logger = logging.getLogger(__name__)
@@ -56,7 +57,8 @@ class DatasetDAO(BaseDAO):  # pylint: disable=too-many-public-methods
         charts = (
             db.session.query(Slice)
             .filter(
-                Slice.datasource_id == database_id, Slice.datasource_type == "table"
+                Slice.datasource_id == database_id,
+                Slice.datasource_type == DatasourceType.TABLE,
             )
             .all()
         )
@@ -85,12 +87,22 @@ class DatasetDAO(BaseDAO):  # pylint: disable=too-many-public-methods
             return False
 
     @staticmethod
-    def validate_uniqueness(database_id: int, schema: Optional[str], name: str) -> bool:
+    def validate_uniqueness(
+        database_id: int,
+        schema: Optional[str],
+        name: str,
+        dataset_id: Optional[int] = None,
+    ) -> bool:
         dataset_query = db.session.query(SqlaTable).filter(
             SqlaTable.table_name == name,
             SqlaTable.schema == schema,
             SqlaTable.database_id == database_id,
         )
+
+        if dataset_id:
+            # make sure the dataset found is different from the target (if any)
+            dataset_query = dataset_query.filter(SqlaTable.id != dataset_id)
+
         return not db.session.query(dataset_query.exists()).scalar()
 
     @staticmethod
@@ -160,7 +172,7 @@ class DatasetDAO(BaseDAO):  # pylint: disable=too-many-public-methods
                 model, properties.get("metrics", []), commit=commit
             )
 
-        return super().update(model, properties, commit=False)
+        return super().update(model, properties, commit=commit)
 
     @classmethod
     def update_columns(

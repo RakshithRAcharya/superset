@@ -18,9 +18,10 @@
 import pandas as pd
 from sqlalchemy import DateTime, inspect, String
 
+import superset.utils.database as database_utils
 from superset import app, db
 from superset.models.slice import Slice
-from superset.utils import core as utils
+from superset.utils.core import DatasourceType
 
 from .helpers import (
     get_example_data,
@@ -35,7 +36,7 @@ def load_random_time_series_data(
 ) -> None:
     """Loading random time series data from a zip file in the repo"""
     tbl_name = "random_time_series"
-    database = utils.get_example_database()
+    database = database_utils.get_example_database()
     engine = database.get_sqla_engine()
     schema = inspect(engine).default_schema_name
     table_exists = database.has_table_by_name(tbl_name)
@@ -89,7 +90,7 @@ def load_random_time_series_data(
     slc = Slice(
         slice_name="Calendar Heatmap",
         viz_type="cal_heatmap",
-        datasource_type="table",
+        datasource_type=DatasourceType.TABLE,
         datasource_id=tbl.id,
         params=get_slice_json(slice_data),
     )

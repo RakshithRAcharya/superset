@@ -31,11 +31,12 @@ from flask import current_app, g
 from sqlalchemy import Column, text
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy.engine.url import make_url, URL
+from sqlalchemy.engine.url import URL
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.expression import ColumnClause, Select
 
 from superset.common.db_query_status import QueryStatus
+from superset.databases.utils import make_url_safe
 from superset.db_engine_specs.base import BaseEngineSpec
 from superset.db_engine_specs.presto import PrestoEngineSpec
 from superset.exceptions import SupersetException
@@ -64,6 +65,7 @@ def upload_to_s3(filename: str, upload_prefix: str, table: Table) -> str:
 
     # pylint: disable=import-outside-toplevel
     import boto3
+    from boto3.s3.transfer import TransferConfig
 
     bucket_path = current_app.config["CSV_TO_HIVE_UPLOAD_S3_BUCKET"]
 
@@ -79,6 +81,7 @@ def upload_to_s3(filename: str, upload_prefix: str, table: Table) -> str:
         filename,
         bucket_path,
         os.path.join(upload_prefix, table.table, os.path.basename(filename)),
+        Config=TransferConfig(use_threads=False),  # Threading is broken in Python 3.9.
     )
     return location
 
@@ -248,7 +251,9 @@ class HiveEngineSpec(PrestoEngineSpec):
             )
 
     @classmethod
-    def convert_dttm(cls, target_type: str, dttm: datetime) -> Optional[str]:
+    def convert_dttm(
+        cls, target_type: str, dttm: datetime, db_extra: Optional[Dict[str, Any]] = None
+    ) -> Optional[str]:
         tt = target_type.upper()
         if tt == utils.TemporalType.DATE:
             return f"CAST('{dttm.date().isoformat()}' AS DATE)"
@@ -333,6 +338,10 @@ class HiveEngineSpec(PrestoEngineSpec):
         job_id = None
         query_id = query.id
         while polled.operationState in unfinished_states:
+            # Queries don't terminate when user clicks the STOP button on SQL LAB.
+            # Refresh session so that the `query.status` modified in stop_query in
+            # views/core.py is reflected here.
+            session.refresh(query)
             query = session.query(type(query)).filter_by(id=query_id).one()
             if query.status == QueryStatus.STOPPED:
                 cursor.cancel()
@@ -429,9 +438,12 @@ class HiveEngineSpec(PrestoEngineSpec):
 
     @classmethod
     def _latest_partition_from_df(cls, df: pd.DataFrame) -> Optional[List[str]]:
-        """Hive partitions look like ds={partition name}"""
+        """Hive partitions look like ds={partition name}/ds={partition name}"""
         if not df.empty:
-            return [df.ix[:, 0].max().split("=")[1]]
+            return [
+                partition_str.split("=")[1]
+                for partition_str in df.iloc[:, 0].max().split("/")
+            ]
         return None
 
     @classmethod
@@ -487,7 +499,10 @@ class HiveEngineSpec(PrestoEngineSpec):
 
     @classmethod
     def update_impersonation_config(
-        cls, connect_args: Dict[str, Any], uri: str, username: Optional[str],
+        cls,
+        connect_args: Dict[str, Any],
+        uri: str,
+        username: Optional[str],
     ) -> None:
         """
         Update a configuration dictionary
@@ -498,7 +513,7 @@ class HiveEngineSpec(PrestoEngineSpec):
         :param username: Effective username
         :return: None
         """
-        url = make_url(uri)
+        url = make_url_safe(uri)
         backend_name = url.get_backend_name()
 
         # Must be Hive connection, enable impersonation, and set optional param

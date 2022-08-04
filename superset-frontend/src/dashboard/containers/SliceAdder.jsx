@@ -22,15 +22,21 @@ import { connect } from 'react-redux';
 import { fetchAllSlices } from '../actions/sliceEntities';
 import SliceAdder from '../components/SliceAdder';
 
-function mapStateToProps({ sliceEntities, dashboardInfo, dashboardState }) {
+function mapStateToProps(
+  { sliceEntities, dashboardInfo, dashboardState },
+  ownProps,
+) {
   return {
+    height: ownProps.height,
     userId: dashboardInfo.userId,
+    dashboardId: dashboardInfo.id,
     selectedSliceIds: dashboardState.sliceIds,
     slices: sliceEntities.slices,
     isLoading: sliceEntities.isLoading,
     errorMessage: sliceEntities.errorMessage,
     lastUpdated: sliceEntities.lastUpdated,
     editMode: dashboardState.editMode,
+    filterboxMigrationState: dashboardState.filterboxMigrationState,
   };
 }
 

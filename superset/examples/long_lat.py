@@ -21,9 +21,10 @@ import geohash
 import pandas as pd
 from sqlalchemy import DateTime, Float, inspect, String
 
+import superset.utils.database as database_utils
 from superset import db
 from superset.models.slice import Slice
-from superset.utils import core as utils
+from superset.utils.core import DatasourceType
 
 from .helpers import (
     get_example_data,
@@ -37,7 +38,7 @@ from .helpers import (
 def load_long_lat_data(only_metadata: bool = False, force: bool = False) -> None:
     """Loading lat/long data from a csv file in the repo"""
     tbl_name = "long_lat"
-    database = utils.get_example_database()
+    database = database_utils.get_example_database()
     engine = database.get_sqla_engine()
     schema = inspect(engine).default_schema_name
     table_exists = database.has_table_by_name(tbl_name)
@@ -113,7 +114,7 @@ def load_long_lat_data(only_metadata: bool = False, force: bool = False) -> None
     slc = Slice(
         slice_name="Mapbox Long/Lat",
         viz_type="mapbox",
-        datasource_type="table",
+        datasource_type=DatasourceType.TABLE,
         datasource_id=tbl.id,
         params=get_slice_json(slice_data),
     )

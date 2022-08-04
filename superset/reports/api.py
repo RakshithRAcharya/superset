@@ -29,6 +29,7 @@ from superset.charts.filters import ChartFilter
 from superset.constants import MODEL_API_RW_METHOD_PERMISSION_MAP, RouteMethod
 from superset.dashboards.filters import DashboardAccessFilter
 from superset.databases.filters import DatabaseFilter
+from superset.extensions import event_logger
 from superset.models.reports import ReportSchedule
 from superset.reports.commands.bulk_delete import BulkDeleteReportScheduleCommand
 from superset.reports.commands.create import CreateReportScheduleCommand
@@ -53,6 +54,7 @@ from superset.reports.schemas import (
 from superset.views.base_api import (
     BaseSupersetModelRestApi,
     RelatedFieldFilter,
+    requires_json,
     statsd_metrics,
 )
 from superset.views.filters import FilterRelatedOwners
@@ -92,6 +94,7 @@ class ReportScheduleRestApi(BaseSupersetModelRestApi):
         "database.database_name",
         "database.id",
         "description",
+        "force_screenshot",
         "grace_period",
         "last_eval_dttm",
         "last_state",
@@ -123,12 +126,14 @@ class ReportScheduleRestApi(BaseSupersetModelRestApi):
         "changed_by.last_name",
         "changed_on",
         "changed_on_delta_humanized",
+        "chart_id",
         "created_by.first_name",
         "created_by.last_name",
         "created_on",
         "creation_method",
         "crontab",
         "crontab_humanized",
+        "dashboard_id",
         "description",
         "id",
         "last_eval_dttm",
@@ -151,6 +156,7 @@ class ReportScheduleRestApi(BaseSupersetModelRestApi):
         "dashboard",
         "database",
         "description",
+        "force_screenshot",
         "grace_period",
         "log_retention",
         "name",
@@ -186,6 +192,7 @@ class ReportScheduleRestApi(BaseSupersetModelRestApi):
         "name",
         "active",
         "created_by",
+        "owners",
         "type",
         "last_state",
         "creation_method",
@@ -208,6 +215,7 @@ class ReportScheduleRestApi(BaseSupersetModelRestApi):
         "dashboard": "dashboard_title",
         "chart": "slice_name",
         "database": "database_name",
+        "created_by": RelatedFieldFilter("first_name", FilterRelatedOwners),
         "owners": RelatedFieldFilter("first_name", FilterRelatedOwners),
     }
 
@@ -220,8 +228,12 @@ class ReportScheduleRestApi(BaseSupersetModelRestApi):
     @expose("/<int:pk>", methods=["DELETE"])
     @protect()
     @safe
-    @statsd_metrics
     @permission_name("delete")
+    @statsd_metrics
+    @event_logger.log_this_with_context(
+        action=lambda self, *args, **kwargs: f"{self.__class__.__name__}.delete",
+        log_to_statsd=False,
+    )
     def delete(self, pk: int) -> Response:
         """Delete a Report Schedule
         ---
@@ -273,7 +285,10 @@ class ReportScheduleRestApi(BaseSupersetModelRestApi):
     @protect()
     @statsd_metrics
     @permission_name("post")
-    def post(self) -> Response:
+    @requires_json
+    def post(
+        self,
+    ) -> Response:
         """Creates a new Report Schedule
         ---
         post:
@@ -304,13 +319,23 @@ class ReportScheduleRestApi(BaseSupersetModelRestApi):
               $ref: '#/components/responses/401'
             404:
               $ref: '#/components/responses/404'
+            422:
+              $ref: '#/components/responses/422'
             500:
               $ref: '#/components/responses/500'
         """
-        if not request.is_json:
-            return self.response_400(message="Request is not JSON")
         try:
             item = self.add_model_schema.load(request.json)
+            # normally this would be covered by a decorator, however
+            # due to this model being formatted incorrectly the data
+            # needed some manipulation.
+            event_logger.log_with_context(
+                action="ReportScheduleRestApi.post",
+                dashboard_id=request.json.get("dashboard", None),
+                chart_id=request.json.get("chart", None),
+                report_format=request.json.get("report_format", None),
+                active=request.json.get("active", None),
+            )
         # This validates custom Schema with custom validations
         except ValidationError as error:
             return self.response_400(message=error.messages)
@@ -335,6 +360,7 @@ class ReportScheduleRestApi(BaseSupersetModelRestApi):
     @safe
     @statsd_metrics
     @permission_name("put")
+    @requires_json
     def put(self, pk: int) -> Response:
         """Updates an Report Schedule
         ---
@@ -374,13 +400,23 @@ class ReportScheduleRestApi(BaseSupersetModelRestApi):
               $ref: '#/components/responses/403'
             404:
               $ref: '#/components/responses/404'
+            422:
+              $ref: '#/components/responses/422'
             500:
               $ref: '#/components/responses/500'
         """
-        if not request.is_json:
-            return self.response_400(message="Request is not JSON")
         try:
             item = self.edit_model_schema.load(request.json)
+            # normally this would be covered by a decorator, however
+            # due to this model being formatted incorrectly the data
+            # needed some manipulation.
+            event_logger.log_with_context(
+                action="ReportScheduleRestApi.put",
+                dashboard_id=request.json.get("dashboard", None),
+                chart_id=request.json.get("chart", None),
+                report_format=request.json.get("report_format", None),
+                active=request.json.get("active", None),
+            )
         # This validates custom Schema with custom validations
         except ValidationError as error:
             return self.response_400(message=error.messages)
@@ -407,6 +443,10 @@ class ReportScheduleRestApi(BaseSupersetModelRestApi):
     @safe
     @statsd_metrics
     @rison(get_delete_ids_schema)
+    @event_logger.log_this_with_context(
+        action=lambda self, *args, **kwargs: f"{self.__class__.__name__}.bulk_delete",
+        log_to_statsd=False,
+    )
     def bulk_delete(self, **kwargs: Any) -> Response:
         """Delete bulk Report Schedule layers
         ---
