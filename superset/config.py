@@ -1396,12 +1396,12 @@ class CustomAuthDBView(AuthDBView):
         # conn.commit()
         # conn.close()
 
-        conn = connect( host="92c7b5ea-22fb-4701-85ce-897791a0db26.c0v4phir0ah9ul9trho0.databases.appdomain.cloud", # TryDB
+        conn = connect( host="domain.databases.appdomain.cloud", # TryDB
                         port= 30876, 
-                        user="ibm_cloud_7aa24daa_093e_44bb_a47f_1eb401998aa8", 
-                        password="434e66fe22cf00ceea254f21669e61f46dcfdba9f91dcd6dcc9a4ba905e66cad", 
+                        user="user", 
+                        password="pass", 
                         sslmode="verify-full", 
-                        sslrootcert="/Users/rakshithacharya/Downloads/286a39f3-e1b8-4381-a83b-08ca9153eae0", 
+                        sslrootcert="/root/.postgresql/root.crt", 
                         database="testsup")
         conn.set_isolation_level(0)
         cur = conn.cursor()
@@ -1412,7 +1412,7 @@ class CustomAuthDBView(AuthDBView):
 
         # ----------------------------------- #
         newDatabase=get_or_create_db(database_name=username,
-                         sqlalchemy_uri="postgres://ibm_cloud_7aa24daa_093e_44bb_a47f_1eb401998aa8:434e66fe22cf00ceea254f21669e61f46dcfdba9f91dcd6dcc9a4ba905e66cad@92c7b5ea-22fb-4701-85ce-897791a0db26.c0v4phir0ah9ul9trho0.databases.appdomain.cloud:30876/{0}?sslmode=verify-full".format(username))
+                         sqlalchemy_uri="postgres://username:password@domain.databases.appdomain.cloud:30876/{0}?sslmode=verify-full".format(username))
         newDatabase.allow_csv_upload = True
 
         from flask import Flask
